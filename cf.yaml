@@ -538,17 +538,3 @@ Parameters:
   AMIid:
     Type: String
     Default: ami-036628737b83574b5
-Mappings:
-  WSO2EIAMIRegionMap:
-    ap-southeast-2:
-      Ubuntu180464bit: ami-07a3bd4944eb120a0
-    eu-west-1:
-      Ubuntu180464bit: ami-00035f41c82244dab
-    us-east-1:
-      Ubuntu180464bit: ami-088d9532aacc9e57b
-    us-east-2:
-      Ubuntu180464bit: ami-0f65671a86f061fcd
-    us-west-1:
-      Ubuntu180464bit: ami-063aa838bd7631e0b
-    us-west-2:
-      Ubuntu180464bit: ami-0bbe6b35405ecebdb
