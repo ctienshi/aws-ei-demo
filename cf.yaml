@@ -243,6 +243,10 @@ Resources:
           ToPort: '4100'
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
+          FromPort: '8080'
+          ToPort: '8080'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
           FromPort: '8140'
           ToPort: '8140'
           SourceSecurityGroupId: !Ref WSO2EILoadBalancerSecurityGroup
@@ -286,6 +290,9 @@ Resources:
           export PATH=~/.local/bin:$PATH
           apt-get update
           pip install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
+          wget https://github.com/gvalkov/tailon/releases/download/v1.0.0/tailon_1.0.0_linux_amd64.tar.gz -P /home/ubuntu/
+          chmod +x /home/ubuntu/tailon_1.0.0_linux_amd64.tar.gz
+          tar -xvf /home/ubuntu/tailon_1.0.0_linux_amd64.tar.gz -C /home/ubuntu
           unzip /home/ubuntu/wso2ei-6.4.0.zip -d /home/ubuntu/
           sed -i "s/ACCESS_KEY/${AWSAccessKeyId}/g" /home/ubuntu/wso2ei-6.4.0/conf/axis2/axis2.xml
           sed -i "s/REGION_NAME/${AWS::Region}/g" /home/ubuntu/wso2ei-6.4.0/conf/axis2/axis2.xml
@@ -305,10 +312,11 @@ Resources:
           tar -xvf /home/ubuntu/jdk-8u144-linux-x64.tar.gz -C /opt/
           bash /usr/local/bin/provision_db_ei.sh
           export PRIVATE_IP=$(ifconfig | grep -m 1 'inet ' | awk '{print $2}')
-          sed -i "s/LOCAL-MEMBER-HOST/$PRIVATE_IP/g" /home/ubuntu/wso2ei-6.4.0/conf/axis2/axis2.xml
+          sed -i "s/LOCAL_MEMBER_HOST/$PRIVATE_IP/g" /home/ubuntu/wso2ei-6.4.0/conf/axis2/axis2.xml
           /home/ubuntu/wso2ei-6.4.0/bin/integrator.sh start
           echo 'export HISTTIMEFORMAT="%F %T "' >> /etc/profile.d/history.sh
           cat /dev/null > ~/.bash_history && history -c
+          nohup /home/ubuntu/tailon alias=wso2_logs,/home/ubuntu/wso2ei-6.4.0/repository/logs/* > nohup.out 2>&1 &
           /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource WSO2EINode1AutoScalingGroup --region ${AWS::Region}
     DependsOn:
       - WSO2EISecurityGroup
@@ -324,6 +332,8 @@ Resources:
       MaxSize: 2
       TargetGroupARNs:
         - !Ref WSO2EIALBTargetGroup
+        - !Ref WSO2EIServicesALBTargetGroup
+        - !Ref WSO2EILogsALBTargetGroup
       VPCZoneIdentifier:
         - !Ref WSO2EIPrivateSubnet1
       Tags:
@@ -377,6 +387,10 @@ Resources:
           FromPort: '4100'
           ToPort: '4100'
           CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '8080'
+          ToPort: '8080'
+          CidrIp: 0.0.0.0/0
       SecurityGroupEgress:
         - IpProtocol: tcp
           FromPort: '9763'
@@ -401,6 +415,10 @@ Resources:
         - IpProtocol: tcp
           FromPort: '4100'
           ToPort: '4100'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '8080'
+          ToPort: '8080'
           CidrIp: 0.0.0.0/0
   WSO2EILoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
@@ -437,6 +455,74 @@ Resources:
       Tags:
       - Key: Name
         Value: ei
+  WSO2EIServicesALBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 10
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 4
+      HealthCheckPath: /
+      HealthCheckPort: 8280
+      Matcher:
+        HttpCode: 200
+      Name: ei-carbon-8280
+      Port: 8280
+      Protocol: HTTP
+      TargetGroupAttributes:
+      - Key: deregistration_delay.timeout_seconds
+        Value: '20'
+      - Key: stickiness.enabled
+        Value: 'true'
+      UnhealthyThresholdCount: 3
+      VpcId:
+        Ref: WSO2EIVPC
+      Tags:
+      - Key: Name
+        Value: ei
+  WSO2EILogsALBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 10
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 4
+      HealthCheckPath: /
+      HealthCheckPort: 8080
+      Matcher:
+        HttpCode: 200
+      Name: ei-carbon-8080
+      Port: 8080
+      Protocol: HTTP
+      TargetGroupAttributes:
+      - Key: deregistration_delay.timeout_seconds
+        Value: '20'
+      - Key: stickiness.enabled
+        Value: 'true'
+      UnhealthyThresholdCount: 3
+      VpcId:
+        Ref: WSO2EIVPC
+      Tags:
+      - Key: Name
+        Value: ei
+  WSO2EIServicesALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref WSO2EIServicesALBTargetGroup
+      LoadBalancerArn: !Ref WSO2EILoadBalancer
+      Port: 8280
+      Protocol: HTTP
+  WSO2EILogsALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref WSO2EILogsALBTargetGroup
+      LoadBalancerArn: !Ref WSO2EILoadBalancer
+      Port: 8080
+      Protocol: HTTP
   WSO2EIALBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
@@ -537,4 +623,4 @@ Parameters:
       - ORACLE_JDK_8
   AMIid:
     Type: String
-    Default: ami-036628737b83574b5
+    Default: ami-0786d9d6148dff179
