@@ -172,7 +172,7 @@ Resources:
           FromPort: '3306'
           ToPort: '3306'
           CidrIp: 0.0.0.0/0
-  WSO2EIDBInstance:
+  WSO2EIDBSTAGINGInstance:
     Type: 'AWS::RDS::DBInstance'
     DeletionPolicy: Delete
     Properties:
@@ -182,7 +182,7 @@ Resources:
       AllocatedStorage: 5
       BackupRetentionPeriod: '0'
       DBInstanceIdentifier: WSO2EIDBInstance
-      DBName: WSO2_EI_DB_STAGING
+      DBName: WSO2_EI_DB
       Engine: MySQL
       MasterUsername: !Ref DBUsername
       MasterUserPassword: !Ref DBPassword
@@ -423,7 +423,7 @@ Resources:
   WSO2EILoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Name: EI
+      Name: EI-staging
       Scheme: internet-facing
       Subnets:
         - !Ref WSO2EIPublicSubnet1
