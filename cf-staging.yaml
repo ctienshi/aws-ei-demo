@@ -317,6 +317,13 @@ Resources:
           echo 'export HISTTIMEFORMAT="%F %T "' >> /etc/profile.d/history.sh
           cat /dev/null > ~/.bash_history && history -c
           nohup /home/ubuntu/tailon alias=wso2_logs,/home/ubuntu/wso2ei-6.4.0/repository/logs/* > nohup.out 2>&1 &
+          end=$((SECONDS+600))
+          while [ $SECONDS -lt $end ] ; do
+              wget --delete-after --server-response --no-check-certificate "https://localhost:9443/carbon/admin/login.jsp"
+              if [ $? -eq "0" ] ; then
+                break
+              fi
+          done
           /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource WSO2EINode1AutoScalingGroup --region ${AWS::Region}
     DependsOn:
       - WSO2EISecurityGroup
@@ -623,4 +630,4 @@ Parameters:
       - ORACLE_JDK_8
   AMIid:
     Type: String
-    Default: ami-0786d9d6148dff179
+    Default: ami-0f8431993b984342f
