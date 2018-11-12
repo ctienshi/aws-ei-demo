@@ -531,7 +531,7 @@ Resources:
   WSO2EILoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Name: EI
+      Name: EI-prod
       Scheme: internet-facing
       Subnets:
         - !Ref WSO2EIPublicSubnet1
